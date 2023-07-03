@@ -11,7 +11,7 @@ from airflow.models.connection import Connection
 import boto3
 
 conn_id='aws_connector'
-BUCKET = 'oncolenspoc'
+BUCKET = 'oncologypoc'
 name = 'csv/cancerpatient.csv'
 
 # Default settings applied to all tasks
@@ -38,7 +38,7 @@ with DAG('csv_to_snowflake',
     dummystart = EmptyOperator(task_id='start')
     query1 = [
         """use schema PUBLIC ;""",
-        """CREATE OR REPLACE STAGE CSV_STAGE URL= 's3://oncolenspoc/csv/' 
+        """CREATE OR REPLACE STAGE CSV_STAGE URL= 's3://oncologypoc/csv/' 
             CREDENTIALS = (aws_key_id ='<aws_key_id>' aws_secret_key = '<aws_secret_key>');
         """,
         """CREATE or replace TABLE Cancer_Patient(
@@ -75,36 +75,6 @@ with DAG('csv_to_snowflake',
         """COPY INTO Cancer_Patient from @CSV_STAGE FILE_FORMAT = (FORMAT_NAME = 'mycsvformat') ON_ERROR = 'CONTINUE';"""
 
     ]
-    # query3 = [
-        
-    #     """use schema PUBLIC ; create or replace table survived_patient as
-    #     select PATIENT_ID , GENDER , AGE from ONCOLENSDB.PUBLIC.CANCER_PATIENT where LEVEL='High' and SERVIVALRATEEOFPATIENT = 'Servived' ;
-    #     """
-    #     """use schema PUBLIC ; select PATIENT_ID , GENDER , AGE from ONCOLENSDB.PUBLIC.CANCER_PATIENT where LEVEL='Low' and SERVIVALRATEEOFPATIENT = 'Unervived' ;
-    #     """
-    # ]
-    # query4 = [
-    #     """use schema PUBLIC ;""",
-    #     """create or replace table alcohol_patient as select PATIENT_ID , GENDER, AGE from ONCOLENSDB.PUBLIC.CANCER_PATIENT 
-    #     where alcohol_use = 'Y' and SERVIVALRATEEOFPATIENT = 'Servived' and age >= 50 ;
-    #     """
-    # ]
-    # query5 = [
-    #     """use schema PUBLIC ;""",
-    #     """create or replace table genetic_risk as select PATIENT_ID , GENDER, AGE, alcohol_use, genetic_risk  from 
-    #         ONCOLENSDB.PUBLIC.CANCER_PATIENT where genetic_risk >5 and age <= 30 ;
-    #     """
-    # ]
-    query6 = [
-        """use schema PUBLIC ;""",
-        """ update Cancer_Patient set ServivalRateeofPatient = 'Unsurvived' where ServivalRateeofPatient = 'Unervived' ;""",
-        """ update Cancer_Patient set ServivalRateeofPatient = 'Survived' where ServivalRateeofPatient = 'Servived' ;"""
-    ]
-    # query7 = [
-    #     """use schema PUBLIC ; """,
-    #     """ update Cancer_Patient set Dust_Allergy = 'High' where Dust_Allergy > 3 ;""",
-    #     """ update Cancer_Patient set Dust_Allergy = 'Low' where Dust_Allergy <= 3 ;"""
-    # ]
     snowflakefileformat = SnowflakeOperator(
         task_id="snowflake_file_format",
         sql ="""use schema PUBLIC ; create or replace file format mycsvformat type ='CSV' field_delimiter =',' skip_header = 1;""",
@@ -120,34 +90,7 @@ with DAG('csv_to_snowflake',
         sql=query2,
         snowflake_conn_id="snowflake_connection_demo",
     )
-    # find_survival_patient_tranformation =SnowflakeOperator(
-    #     task_id="find_survival_patient_tranformation",
-    #     sql=query3,
-    #     snowflake_conn_id="snowflake_connection_demo",
-    # )
-    # alcohol_consump_patient_transformation =SnowflakeOperator(
-    #     task_id="alcohol_consump_patient_transformation",
-    #     sql=query4,
-    #     snowflake_conn_id="snowflake_connection_demo",
-    # )
-    # genetic_risk_transformation =SnowflakeOperator(
-    #     task_id="genetic_risk_transformation",
-    #     sql=query5,
-    #     snowflake_conn_id="snowflake_connection_demo",
-    # )
-    transformation =SnowflakeOperator(
-        task_id="transformation",
-        sql=query6,
-        snowflake_conn_id="snowflake_connection_demo",
-    )
-    # transform =SnowflakeOperator(
-    #     task_id="transform",
-    #     sql=query7,
-    #     snowflake_conn_id="snowflake_connection_demo",
-    # )    
 
     dummyend=EmptyOperator(task_id='end')
 
     dummystart >>snowflakefileformat >>snowflakestage >> copydatafromstage >> transformation  >> dummyend
-    # find_survival_patient_tranformation >> alcohol_consump_patient_transformation >> genetic_risk_transformation
-# >> transform
